@@ -257,12 +257,13 @@
     return list.map(function (m) {
       if (m.k === 'pen') {
         return '<polyline points="' + m.pts.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') +
-          '" fill="none" stroke="#E5484D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>';
+          '" fill="none" stroke="#F04452" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>';
       }
       var words = wrap(m.t, 12), h = 6 + words.length * 7, w = Math.min(84, 8 + Math.max.apply(null, words.map(function (x) { return x.length; })) * 5.6);
       var x = Math.min(Math.max(m.x, 2), W - w - 2), y = Math.min(Math.max(m.y, 2), H - h - 2);
-      return '<g><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="2" fill="#FFF4C2" stroke="#E2BE45" stroke-width=".6"/>' +
-        words.map(function (line, i) { return t(x + 4, y + 9 + i * 7, esc(line), 5.4, '#5A4300', 600, 'start'); }).join('') + '</g>';
+      return '<g><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="1.2" fill="#FFFFFF" fill-opacity=".95" stroke="#F04452" stroke-width=".7"/>' +
+        '<path d="M' + (x - 2.5) + ' ' + (y + h / 2) + ' l2.5 0" stroke="#F04452" stroke-width=".9" stroke-linecap="round"/>' +
+        words.map(function (line, i) { return t(x + 4, y + 9 + i * 7, esc(line), 5.4, '#D22030', 700, 'start'); }).join('') + '</g>';
     }).join('');
   }
   function wrap(s, n) {

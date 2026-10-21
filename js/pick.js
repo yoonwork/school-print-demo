@@ -73,7 +73,7 @@
       '<header class="apphead"><a class="logo" href="#pick" aria-label="바른쪽 처음으로"><span class="mark" aria-hidden="true"></span>바른쪽</a>' +
       '<span class="apphead-sub">학교 인쇄물 구성표</span>' +
       '<button class="ib ml-auto" data-help aria-label="만드는 방법 보기">' + ic('help') + '</button></header>' +
-      '<section class="hello"><p>선생님, 반가워요</p><h1>표지부터 한 쪽씩 골라 담아 주세요</h1>' +
+      '<section class="hello"><div id="stepbar"></div><p>선생님, 반가워요</p><h1>표지부터 한 쪽씩 골라 담아 주세요</h1>' +
       '<div class="booktype" role="radiogroup" aria-label="만들 책" id="booktype"></div></section>' +
       '<div class="pick">' +
       '<div class="pick-main">' +
@@ -129,6 +129,7 @@
   }
   function renderGrid() {
     var list = visible();
+    U.$('#grid').setAttribute('data-part', S.part);
     if (!list.length) {
       U.$('#grid').innerHTML = '<div class="empty span-all"><div class="em-ic">' + ic('search') + '</div><h4>이 분류에는 아직 샘플이 없어요</h4><p>다른 분류를 골라 보세요.</p><div class="row"><button class="btn btn-secondary btn-sm" data-cat="전체">전체 보기</button></div></div>';
       return;
@@ -137,8 +138,8 @@
       var n = countIn(x.id);
       return '<article class="scard">' +
         '<button type="button" class="sthumb" data-zoom="' + x.id + '" aria-label="' + esc(x.title) + ' 크게 보기">' + paper(x.id) +
-        (x.grade === 2 ? '<span class="hot">인기</span>' : '') + (n ? '<span class="got num">' + ic('check', 'ic-xs') + n + '쪽 담음</span>' : '') + '</button>' +
-        '<div class="sinfo"><b>' + esc(x.title) + '</b><span class="num">' + x.id + ' · 조회 ' + U.num(x.hits) + '</span></div>' +
+        (n ? '<span class="got num">' + ic('check', 'ic-xs') + n + '쪽 담음</span>' : '') + '</button>' +
+        '<div class="sinfo"><b>' + esc(x.title) + '</b><span class="num">' + (x.grade === 2 ? '<em class="hot">인기</em>' : '') + x.id + ' · 조회 ' + U.num(x.hits) + '</span></div>' +
         '<button type="button" class="btn btn-sm sadd ' + (n ? 'btn-soft' : 'btn-secondary') + '" data-add="' + x.id + '">' + ic('plus') + (n ? '한 번 더 담기' : '담기') + '</button>' +
         '</article>';
     }).join('');
@@ -157,7 +158,8 @@
       }
       return '<li class="prow" data-uid="' + p.uid + '">' +
         '<button type="button" class="grip" aria-label="끌어서 순서 바꾸기" title="끌어서 순서 바꾸기">' + ic('grip') + '</button>' +
-        '<button type="button" class="pth" data-open-at="' + i + '" aria-label="' + (i + 1) + '쪽 미리보기">' + paper(p.sid) + '<span class="no num">' + (i + 1) + '</span></button>' +
+        '<span class="pno num" aria-hidden="true">' + (i + 1) + '</span>' +
+        '<button type="button" class="pth" data-open-at="' + i + '" aria-label="' + (i + 1) + '쪽 미리보기">' + paper(p.sid) + '</button>' +
         '<div class="pm"><b>' + esc(smp.title) + '</b><span>' + U.partName(smp.part) + ' · ' + smp.id + (mc ? ' · 표시 ' + mc : '') + '</span></div>' +
         '<button type="button" class="ib ib-s pdel" data-del="' + p.uid + '" aria-label="' + (i + 1) + '쪽 빼기">' + ic('x', 'ic-s') + '</button>' +
         '<div class="pact">' + rep + '<span class="mvg"><button type="button" class="mv" data-up="' + i + '" aria-label="' + (i + 1) + '쪽 위로" ' + (i === 0 ? 'disabled' : '') + '>' + ic('up', 'ic-s') + '</button>' +
@@ -179,6 +181,7 @@
       '<button type="button" class="btn btn-primary btn-lg" data-go-send ' + (S.pages.length ? '' : 'disabled') + '>' + ic('send') + '보내기</button></div>';
   }
   function renderMbar() {
+    U.$('#stepbar').innerHTML = U.stepbar(S.pages.length ? 2 : 1);
     var el = U.$('#mbar'), last = S.pages.slice(-3);
     el.innerHTML = '<div class="mb-stack" aria-hidden="true">' + (last.length ? last.map(function (p) { return paper(p.sid); }).join('') : '<div class="paper empty-paper"></div>') + '</div>' +
       '<div class="mb-t"><b class="num">' + S.pages.length + '쪽 담음</b><span>' + (S.savedAt ? '자동 저장 ' + U.hm(S.savedAt) : '고르면 자동 저장돼요') + '</span></div>' +
@@ -202,7 +205,7 @@
   }
   function zoom(sid) {
     var x = U.sample(sid), n = countIn(sid);
-    var m = U.modal('<div class="zbox"><div class="zpaper">' + paper(sid) + '</div><div class="zinfo">' +
+    var m = U.modal('<div class="zbox"><div class="zpaper" data-part="' + x.part + '">' + paper(sid) + '</div><div class="zinfo">' +
       '<p class="z-k">' + U.partName(x.part) + ' · ' + esc(x.cat) + '</p><h3>' + esc(x.title) + '</h3>' +
       '<dl class="zdl"><div><dt>샘플 번호</dt><dd class="num">' + x.id + '</dd></div><div><dt>조회</dt><dd class="num">' + U.num(x.hits) + '</dd></div>' +
       '<div><dt>올린 날</dt><dd class="num">' + x.date.replace(/-/g, '.') + '</dd></div><div><dt>게시판 글</dt><dd class="num">' + x.board + ' #' + x.wr + '</dd></div></dl>' +

@@ -41,7 +41,7 @@
     var today = new Date(), min = today.getFullYear() + '-' + U.pad(today.getMonth() + 1) + '-' + U.pad(today.getDate());
     root.innerHTML =
       '<div class="sapp">' + backHead() +
-      '<section class="hello"><p>마지막 단계예요</p><h1>구성표와 요청을 보내 주세요</h1></section>' +
+      '<section class="hello">' + U.stepbar(3) + '<p>마지막 단계예요</p><h1>구성표와 요청을 보내 주세요</h1></section>' +
       '<div class="send">' +
       '<aside class="send-side">' + summaryCard(snap) + labCard() + '</aside>' +
       '<form class="card fcard" id="sform" novalidate>' +

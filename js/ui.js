@@ -31,6 +31,11 @@
     if (!sampleMap) { sampleMap = {}; window.DATA.SAMPLES.forEach(function (x) { sampleMap[x.id] = x; }); }
     return sampleMap[id];
   }
+  // 단계 막대 (1 고르기 → 2 순서 → 3 보내기)
+  function stepbar(n) {
+    return '<div class="stepbar" role="img" aria-label="3단계 중 ' + n + '단계"><div class="pbar"><i style="width:' + Math.round(n / 3 * 100) + '%"></i></div>' +
+      '<p class="pbar-t"><b class="num">' + n + '</b>/3 · ' + ['샘플 고르기', '순서 정하기', '보내기'][n - 1] + '</p></div>';
+  }
   function partName(p) { return { cover: '표지', divider: '간지', booklist: '도서목록', inner: '내지' }[p] || p; }
   function bookName(b) { return b === 'plan' ? '학습플래너' : '독서기록장'; }
 
@@ -152,7 +157,7 @@
     return '<div class="vpage" data-i="' + i + '"><div class="paper">' + window.Art.svg(smp) + '</div>' +
       '<svg class="ov" viewBox="0 0 140 198" preserveAspectRatio="none">' + window.Art.marks(V.o.marksOf(i)) + '</svg>' +
       (p.rep ? '<div class="vrep">' + ic('clip', 'ic-s') + '<span>내 원고로 교체 · ' + esc(p.rep.name) + '</span></div>' : '') +
-      '<div class="vno num">' + (i + 1) + '쪽 · ' + esc(smp.title) + '</div></div>';
+      '<div class="vno"><b class="num">' + (i + 1) + '</b><span>' + esc(smp.title) + '</span></div></div>';
   }
   function drawSpread() {
     var st = $('#vstage'), all = spreads(V.o.pages.length, V.mode);
@@ -179,7 +184,7 @@
       var p0 = pt(ov, e);
       if (V.tool === 'text') { askText(pageEl, i, p0); return; }
       var pts = [p0], line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-      line.setAttribute('fill', 'none'); line.setAttribute('stroke', '#E5484D'); line.setAttribute('stroke-width', '1.6');
+      line.setAttribute('fill', 'none'); line.setAttribute('stroke', '#F04452'); line.setAttribute('stroke-width', '1.7');
       line.setAttribute('stroke-linecap', 'round'); line.setAttribute('stroke-linejoin', 'round');
       ov.appendChild(line);
       function mv(ev) {
@@ -221,7 +226,7 @@
   }
 
   window.UI = {
-    $: $, $$: $$, esc: esc, ic: ic, size: size, num: num, dt: dt, hm: hm, pad: pad, sample: sample, partName: partName, bookName: bookName,
+    $: $, $$: $$, esc: esc, ic: ic, size: size, num: num, dt: dt, hm: hm, pad: pad, sample: sample, stepbar: stepbar, partName: partName, bookName: bookName,
     toast: toast, modal: modal, closeModal: closeModal, confirmBox: confirmBox, openViewer: openViewer
   };
 })();
