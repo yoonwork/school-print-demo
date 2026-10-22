@@ -11,7 +11,7 @@
    ===================================================================== */
 (function () {
   'use strict';
-  var KEY = 'barunjjok_demo_db_v1';
+  var KEY = 'barunjjok_demo_db_v2';   // v2: 예시 날짜를 '지금' 기준으로 옮겨요
   var RULES = {
     minSeconds: 3,          // 화면을 연 지 3초 안에 보내면 '과속 제출'로 봐요
     rateWindowMin: 10,      // 같은 곳에서 10분에
@@ -35,9 +35,36 @@
     if (mem) return mem;
     mem = load();
     if (!mem) {
-      mem = { spreads: JSON.parse(JSON.stringify(window.DATA.SEED)), hits: [], boardsReadAt: '2026-10-21T21:00:00' };
+      mem = { spreads: relativize(JSON.parse(JSON.stringify(window.DATA.SEED))), hits: [], seqs: {}, boardsReadAt: iso(new Date(Date.now() - 47 * 60000)) };
     }
+    if (!mem.seqs) mem.seqs = {};
     return mem;
+  }
+
+  /**
+   * 미리 넣어 둔 예시 구성표의 날짜를 '지금' 기준으로 옮겨요.
+   * data.js에는 2026-10-21 기준으로 적어 두었는데, 그대로 두면 며칠 뒤에 열었을 때
+   * '오늘 0건'이 되고 '오늘·최근 7일' 필터가 비어 버려요.
+   * 가장 최근 구성표가 25분 전에 들어온 것처럼 모두 같은 간격으로 옮기고,
+   * 번호(SP-날짜-순번)·메일 기록 시각·받을 날도 같이 맞춰요.
+   */
+  function relativize(list) {
+    var newest = list.reduce(function (m, r) { var t = new Date(r.at).getTime(); return t > m ? t : m; }, 0);
+    var now = new Date(), gap = Math.max(1, Math.min(25, now.getHours() * 60 + now.getMinutes() - 1)); // 자정 직후에도 '오늘' 것이 하나는 있게
+    var shift = Math.floor((now.getTime() - gap * 60000 - newest) / 60000) * 60000;
+    var dayShift = Math.round(shift / 86400000), perDay = {};
+    list.slice().sort(function (a, b) { return a.at < b.at ? -1 : 1; }).forEach(function (r) {
+      var d = new Date(new Date(r.at).getTime() + shift), k = ymd(d);
+      perDay[k] = (perDay[k] || 0) + 1;
+      r.at = iso(d);
+      r.no = 'SP-' + k + '-' + pad(perDay[k], 4);
+      var due = new Date(r.due + 'T00:00:00');
+      due.setDate(due.getDate() + dayShift);
+      r.due = due.getFullYear() + '-' + pad(due.getMonth() + 1, 2) + '-' + pad(due.getDate(), 2);
+      var stamp = pad(d.getMonth() + 1, 2) + '.' + pad(d.getDate(), 2) + ' ' + pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2);
+      r.mailLog = (r.mailLog || []).map(function (l) { return l.replace(/^\d\d\.\d\d \d\d:\d\d/, stamp); });
+    });
+    return list;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* 무시 */ } }
   function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
@@ -68,14 +95,17 @@
       else if (secs < RULES.minSeconds) spam = secs.toFixed(1) + '초 만에 제출';
       d.hits.push(now.getTime());
 
-      // ④ 번호 발급: SP-날짜-그날 순번
-      var prefix = 'SP-' + ymd(now) + '-';
-      var seq = d.spreads.filter(function (x) { return x.no.indexOf(prefix) === 0; }).length + 1;
+      // ④ 번호 발급: SP-날짜-그날 순번. 지운 번호는 다시 쓰지 않아요 (실제: DB 자동 증가 값)
+      var day = ymd(now), prefix = 'SP-' + day + '-';
+      var used = d.spreads.filter(function (x) { return x.no.indexOf(prefix) === 0; }).map(function (x) { return Number(x.no.slice(-4)); });
+      var seq = Math.max.apply(null, [d.seqs[day] || 0].concat(used)) + 1;
+      d.seqs[day] = seq;
       var rec = {
         no: prefix + pad(seq, 4), at: iso(now), org: payload.form.org, person: payload.form.person, phone: payload.form.phone,
         email: payload.form.email, book: payload.book, qty: Number(payload.form.qty), due: payload.form.due, msg: payload.form.msg,
         pages: payload.pages, marks: payload.marks, files: payload.files,
-        mail: spam ? 'skipped' : 'sending', mailLog: spam ? ['스팸으로 거름: 메일 보내지 않음'] : [], spam: spam
+        mail: spam ? 'skipped' : 'sending', mailLog: spam ? ['스팸으로 거름: 메일 보내지 않음'] : [], spam: spam,
+        fresh: true   // 이 브라우저에서 방금 보낸 것 (관리 목록에 '방금 받음' 표시용)
       };
       d.spreads.unshift(rec);
       save();

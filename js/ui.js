@@ -36,6 +36,50 @@
     return '<div class="stepbar" role="img" aria-label="3단계 중 ' + n + '단계"><div class="pbar"><i style="width:' + Math.round(n / 3 * 100) + '%"></i></div>' +
       '<p class="pbar-t"><b class="num">' + n + '</b>/3 · ' + ['샘플 고르기', '순서 정하기', '보내기'][n - 1] + '</p></div>';
   }
+  // 받침에 따라 을/를, 이/가처럼 조사를 골라요. ('책 읽는 고래'를 · '숲속 도서관'을)
+  function josa(word, withFinal, noFinal) {
+    var w = String(word).replace(/[^가-힣0-9A-Za-z]+$/, ''), c = w.charAt(w.length - 1), code = c.charCodeAt(0);
+    var has;
+    if (code >= 0xAC00 && code <= 0xD7A3) has = (code - 0xAC00) % 28 !== 0;
+    else if (/[0-9]/.test(c)) has = '013678'.indexOf(c) >= 0;
+    else has = /[lmnr]/i.test(c);
+    return word + (has ? withFinal : noFinal);
+  }
+  function calm() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+
+  // ----- 담은 쪽이 구성표로 날아가는 움직임 -----
+  // flyFrom(): 지금 자리의 그림을 복사해 화면 위에 띄워요(원래 화면이 다시 그려져도 남아 있게).
+  // flyTo(): 띄운 그림을 목표 자리로 옮기고, 도착하면 done()을 불러요.
+  function flyFrom(el) {
+    if (!el || calm()) return null;
+    var a = el.getBoundingClientRect();
+    if (!a.width) return null;
+    var c = el.cloneNode(true);
+    c.classList.add('flyer');
+    c.style.left = a.left + 'px'; c.style.top = a.top + 'px'; c.style.width = a.width + 'px'; c.style.height = a.height + 'px';
+    document.body.appendChild(c);
+    return c;
+  }
+  function flyTo(c, target, done) {
+    if (!c) { if (done) done(); return; }
+    var a = c.getBoundingClientRect(), b = target && target.getBoundingClientRect();
+    if (!b || !b.width || !c.animate) { c.remove(); if (done) done(); return; }
+    var dx = (b.left + b.width / 2) - (a.left + a.width / 2), dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+    var sc = Math.max(0.08, Math.min(1, b.height / a.height));
+    var lift = Math.min(120, Math.abs(dy) * 0.35 + 40);
+    var anim = c.animate([
+      { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: 'translate(' + (dx * 0.45) + 'px,' + (dy * 0.45 - lift) + 'px) scale(' + ((1 + sc) / 2) + ') rotate(-8deg)', opacity: 1, offset: 0.5 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ') rotate(-2deg)', opacity: 0.85 }
+    ], { duration: 520, easing: 'cubic-bezier(.32,.72,.36,1)' });
+    anim.onfinish = function () { c.remove(); if (done) done(); };
+  }
+  // 숫자가 바뀐 걸 알려 주는 짧은 튐
+  function bump(el) {
+    if (!el) return;
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  }
+
   function partName(p) { return { cover: '표지', divider: '간지', booklist: '도서목록', inner: '내지' }[p] || p; }
   function bookName(b) { return b === 'plan' ? '학습플래너' : '독서기록장'; }
 
@@ -94,14 +138,16 @@
     for (var k = 1; k < n; k += 2) out.push(k + 1 < n ? [k, k + 1] : [k]);
     return out;
   }
+  function phone() { return window.matchMedia('(max-width:640px)').matches; }
   function openViewer(o) {
-    V = { o: o, mode: 'spread', at: 0, tool: null };
+    // 휴대폰은 한 쪽씩(크게), PC는 펼친 양면으로 시작해요. 위 '양면·한 쪽'으로 언제든 바꿀 수 있어요.
+    V = { o: o, mode: phone() ? 'single' : 'spread', at: 0, tool: null, dir: 0 };
     var start = o.start || 0;
     var sp = spreads(o.pages.length, V.mode);
     sp.forEach(function (s, idx) { if (s.indexOf(start) >= 0) V.at = idx; });
     var m = modal(
       '<div class="vhead"><div class="vt"><h3>' + esc(o.title || '미리보기') + '</h3><p>' + esc(o.note || '') + '</p></div>' +
-      '<div class="seg" role="group" aria-label="보기 방식"><button type="button" data-mode="spread" aria-pressed="true">양면</button><button type="button" data-mode="single" aria-pressed="false">한 쪽</button></div>' +
+      '<div class="seg" role="group" aria-label="보기 방식"><button type="button" data-mode="spread" aria-pressed="' + (V.mode === 'spread') + '">양면</button><button type="button" data-mode="single" aria-pressed="' + (V.mode === 'single') + '">한 쪽</button></div>' +
       '<button class="ib" data-close aria-label="미리보기 닫기">' + ic('x') + '</button></div>' +
       '<div class="vstage" id="vstage"></div>' +
       '<div class="vfoot">' +
@@ -123,9 +169,11 @@
         V.mode = b.getAttribute('data-mode');
         $$('[data-mode]', m).forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         spreads(V.o.pages.length, V.mode).forEach(function (s, idx) { if (s.indexOf(first) >= 0) V.at = idx; });
+        V.dir = 0;
         drawSpread();
       };
     });
+    bindSwipe($('#vstage'));
     $$('[data-tool]', m).forEach(function (b) {
       b.onclick = function () {
         var t = b.getAttribute('data-tool');
@@ -148,9 +196,42 @@
     drawSpread();
   }
   function go(d) {
-    var n = spreads(V.o.pages.length, V.mode).length;
-    V.at = Math.max(0, Math.min(n - 1, V.at + d));
+    var n = spreads(V.o.pages.length, V.mode).length, to = Math.max(0, Math.min(n - 1, V.at + d));
+    if (to === V.at) { nudge(d); return; }
+    V.at = to; V.dir = d;
     drawSpread();
+  }
+  // 첫 쪽·끝 쪽에서 더 넘기려 하면 살짝 튕겨서 '끝'이라는 걸 알려 줘요
+  function nudge(d) {
+    var sp = $('#vstage .spread');
+    if (!sp || !sp.animate || calm()) return;
+    sp.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-d * 14) + 'px)' }, { transform: 'translateX(0)' }], { duration: 260, easing: 'ease-out' });
+  }
+  // 손가락으로 옆으로 밀어 넘기기 (펜·글상자를 고르지 않았을 때만)
+  function bindSwipe(st) {
+    var x0 = null, y0 = 0, dx = 0, sp = null, id = null;
+    st.addEventListener('pointerdown', function (e) {
+      if (V.tool || e.button > 0 || e.target.closest('input,button')) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; id = e.pointerId; sp = st.querySelector('.spread');
+    });
+    st.addEventListener('pointermove', function (e) {
+      if (x0 === null || e.pointerId !== id || !sp) return;
+      dx = e.clientX - x0;
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(e.clientY - y0)) return;
+      if (!st.hasPointerCapture(id)) { try { st.setPointerCapture(id); } catch (err) { /* 무시 */ } }
+      sp.style.transition = 'none';
+      sp.style.transform = 'translateX(' + (dx * 0.55) + 'px) rotate(' + (dx * 0.006) + 'deg)';
+    });
+    function end(e) {
+      if (x0 === null || (e && e.pointerId !== id)) return;
+      var moved = dx; x0 = null;
+      if (!sp) return;
+      sp.style.transition = 'transform .2s ease-out';
+      sp.style.transform = ''; // 첫 쪽·끝 쪽이라 못 넘기면 제자리로 돌아와요
+      if (Math.abs(moved) > 48) go(moved < 0 ? 1 : -1);
+    }
+    st.addEventListener('pointerup', end);
+    st.addEventListener('pointercancel', end);
   }
   function pageHTML(i) {
     var p = V.o.pages[i], smp = sample(p.sid);
@@ -162,11 +243,12 @@
   function drawSpread() {
     var st = $('#vstage'), all = spreads(V.o.pages.length, V.mode);
     if (!all.length) { st.innerHTML = '<div class="empty"><h4>담은 쪽이 없어요</h4><p>샘플을 담으면 여기에서 넘겨 볼 수 있어요.</p></div>'; $('#vpos').textContent = ''; return; }
-    var s = all[V.at], html = '<div class="spread ' + V.mode + '">';
+    var s = all[V.at], html = '<div class="spread ' + V.mode + (V.dir < 0 ? ' back' : V.dir > 0 ? ' fwd' : '') + '">';
     if (V.mode === 'spread' && s.length === 1 && s[0] === 0) html += '<div class="vpage blank" aria-hidden="true"></div>';
     s.forEach(function (i) { html += pageHTML(i); });
     if (V.mode === 'spread' && s.length === 1 && s[0] !== 0) html += '<div class="vpage blank" aria-hidden="true"></div>';
     st.innerHTML = html + '</div>';
+    V.dir = 0; // 넘길 때만 움직이고, 펜으로 그린 뒤 다시 그릴 때는 가만히 있어요
     $('#vpos').textContent = (s.length === 2 ? (s[0] + 1) + '–' + (s[1] + 1) : (s[0] + 1)) + ' / ' + V.o.pages.length + '쪽';
     $('[data-prev]').disabled = V.at === 0;
     $('[data-next]').disabled = V.at === all.length - 1;
@@ -227,6 +309,7 @@
 
   window.UI = {
     $: $, $$: $$, esc: esc, ic: ic, size: size, num: num, dt: dt, hm: hm, pad: pad, sample: sample, stepbar: stepbar, partName: partName, bookName: bookName,
+    josa: josa, calm: calm, flyFrom: flyFrom, flyTo: flyTo, bump: bump,
     toast: toast, modal: modal, closeModal: closeModal, confirmBox: confirmBox, openViewer: openViewer
   };
 })();

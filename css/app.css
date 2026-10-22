@@ -1037,3 +1037,149 @@ select.input{background-color:var(--gray)}
   .hello h1{font-size:24px}
   .btc{font-size:15px;gap:8px;padding:0 10px}
 }
+
+/* =====================================================================
+   v4 손맛 (2026-10-22) — 누르면 반응하고, 담은 쪽이 책으로 쌓여요.
+   움직임은 '무엇이 바뀌었는지' 알릴 때만 넣고, 움직임 줄이기 설정이면 꺼져요(맨 위 규칙).
+   ===================================================================== */
+
+/* 누를 때 살짝 눌림 */
+.btn,.ib,.fchip,.btc,.tool,.mv,.repbtn,.cap-box,.drop,.link-btn{transition:background-color .15s,color .15s,box-shadow .15s,transform .12s ease-out}
+.btn:active:not(:disabled),.ib:active:not(:disabled),.fchip:active,.btc:active,.tool:active,.mv:active:not(:disabled),.repbtn:active,.cap-box:active,.drop:active{transform:scale(.96)}
+.btn-cta:active:not(:disabled),.btn-lg:active:not(:disabled),.mbar .btn:active,.book-act .btn:active:not(:disabled){transform:scale(.98)}
+.sthumb{transition:background-color .15s,transform .12s ease-out}
+.sthumb:active{transform:scale(.98)}
+
+/* 담은 쪽이 날아가는 그림 */
+.paper.flyer{position:fixed;z-index:95;margin:0;pointer-events:none;transform-origin:center;will-change:transform;box-shadow:0 0 0 .5px rgba(0,27,55,.1),0 18px 30px -12px rgba(0,27,55,.45)}
+.paper.flyer::before{display:none}
+.pending{opacity:0}
+.land{animation:land .3s cubic-bezier(.3,1.4,.5,1)}
+@keyframes land{0%{transform:translateY(-8px) scale(1.12)}100%{transform:none}}
+.bump{display:inline-block;animation:bump .34s cubic-bezier(.3,1.6,.5,1);transform-origin:left 70%}
+@keyframes bump{40%{transform:scale(1.22)}}
+.got.pop{animation:popin .32s cubic-bezier(.3,1.5,.5,1)}
+@keyframes popin{from{transform:scale(.4);opacity:0}}
+
+/* 내 구성표: 쌓인 책 묶음 */
+.bs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.bs-stack{display:flex;align-items:flex-end;padding:0 6px 4px 0;flex:none}
+.bs-stack .paper{width:46px;margin-left:-32px;border-radius:2px;box-shadow:0 0 0 .5px rgba(0,27,55,.1),0 6px 12px -6px rgba(0,27,55,.4)}
+.bs-stack .paper:first-child{margin-left:0}
+.bs-stack .paper:nth-last-child(1){rotate:5deg}
+.bs-stack .paper:nth-last-child(2){rotate:-3deg}
+.bs-stack .paper:nth-last-child(3){rotate:2deg}
+.bs-stack .paper:nth-last-child(4){rotate:-6deg}
+.ghost-paper{background:transparent!important;box-shadow:none!important;border:1.5px dashed #C9CED6;rotate:none!important}
+.mb-stack .paper:last-child{rotate:4deg}
+
+/* 부품 탭·분류 칩이 위에 붙어 따라와요 */
+.pfilt-sen{height:1px;margin-bottom:-1px}
+.pfilt{position:sticky;top:0;z-index:15;background:var(--bg);transition:box-shadow .2s}
+.pfilt .frow{margin:12px 0 14px}
+.pfilt.stuck{box-shadow:0 12px 14px -14px rgba(0,27,55,.35)}
+.sgrid{margin-top:8px}
+
+/* 미리보기: 넘기는 방향대로 움직이고, 손가락으로 밀어 넘겨요 */
+.vstage{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.spread{animation:none}
+.spread.fwd{animation:turnF .28s cubic-bezier(.2,.8,.3,1)}
+.spread.back{animation:turnB .28s cubic-bezier(.2,.8,.3,1)}
+@keyframes turnF{from{opacity:.25;transform:translateX(32px)}}
+@keyframes turnB{from{opacity:.25;transform:translateX(-32px)}}
+
+/* 보낸 뒤: 저장 → 번호 → 메일이 차례로 켜져요 */
+.dcard.reveal .d-ic{animation:popin .42s cubic-bezier(.3,1.5,.5,1) both}
+.dcard.reveal .d-k,.dcard.reveal .d-no{animation:rise .35s ease-out .08s both}
+.dcard.reveal .dsteps li{animation:rise .35s ease-out both}
+.dcard.reveal .dsteps li:nth-child(1){animation-delay:.2s}
+.dcard.reveal .dsteps li:nth-child(2){animation-delay:.4s}
+.dcard.reveal .dsteps li:nth-child(3){animation-delay:.6s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+
+/* 관리: 방금 받은 구성표 강조, 메일 실패 알림 줄 */
+.chip.fresh{margin-left:8px;vertical-align:1px}
+.atbl tbody tr.flash{animation:flash 1.8s ease-out}
+@keyframes flash{0%,35%{background:#CFE3FF}100%{background:var(--brand-tint)}}
+.attn{display:flex;align-items:center;gap:12px;margin:0 var(--sp-6) var(--sp-4);padding:12px 12px 12px 14px;border-radius:14px;background:var(--bad-bg)}
+.attn-ic{width:32px;height:32px;border-radius:50%;background:#fff;color:var(--bad);display:grid;place-items:center;flex:none}
+.attn p{flex:1;min-width:0;display:grid;gap:1px}
+.attn b{font-size:15px;color:var(--bad);font-weight:700}
+.attn p span{font-size:13px;color:var(--ink-2)}
+.attn .btn{flex:none}
+.btbl .site{display:none}
+
+/* 휴대폰·태블릿: 누르는 곳 44px 이상 */
+@media (max-width:1023px){
+  .btn:not(.btn-lg):not(.btn-cta){--h:44px}
+  .fchip{height:44px;border-radius:22px}
+  .sortsel select,.search,.mini{height:44px}
+  .mv,.ib-s{width:44px;height:44px}
+  .repbtn,.repchip{height:44px}
+  .repchip button{width:36px;height:36px;position:relative}
+  .repchip button::after{content:"";position:absolute;inset:-4px}
+  .grip{position:relative}
+  .grip::after{content:"";position:absolute;top:0;bottom:0;left:-10px;right:-10px}
+  .seg button{height:44px}
+  .frow2 .ib{width:44px;height:44px}
+  .link-btn{min-height:44px}
+  .pp summary{min-height:44px;display:flex;align-items:center}
+  .check{min-height:44px;align-items:center}
+  .check .cb{margin-top:0}
+  .dsel{height:44px}
+  .pnav a{min-height:44px;display:inline-flex;align-items:center}
+  .apphead .logo,.topbar .logo,.lcard .logo{min-height:44px}
+  .bs-stack .paper{width:36px;margin-left:-25px}
+  .bs-stack .paper:first-child{margin-left:0}
+  body.noscroll[data-view="pick"] .toast-live{bottom:calc(104px + env(safe-area-inset-bottom))}
+  /* 아래 막대: 비었을 때는 글과 예시 버튼만 */
+  .mbar{background:linear-gradient(rgba(255,255,255,0),#fff 20px)}
+  .mbar.is-empty{grid-template-columns:minmax(0,1fr);grid-template-areas:"t" "b"}
+  .mbar.is-empty .mb-t{align-items:center;justify-content:space-between;margin:-8px 0 -6px}
+  .mbar.is-empty .mb-t b{font-weight:600;color:var(--ink-2)}
+  .mbar .link-btn{font-size:14px;padding:0 4px}
+}
+@media (max-width:640px){
+  .pfilt{margin:0 -16px;padding:0 16px}
+  .atbl .cbx{min-width:44px;min-height:44px;display:grid!important;place-items:center;margin:-10px -8px -10px -12px;cursor:pointer}
+  .pfilt .frow{margin:10px 0 12px}
+  .partbar .seg button{height:48px}
+  .prow{grid-template-columns:22px 20px 44px minmax(0,1fr) auto}
+  .pth{width:44px}
+  .attn{margin:0 var(--sp-4) var(--sp-3);align-items:flex-start;flex-wrap:wrap}
+  .attn p{flex-basis:calc(100% - 44px)}
+  .attn .btn{margin-left:44px}
+  .btbl tr{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"bk pt st" "a a n" "b b n" "t t t";gap:6px 8px;align-items:center}
+  .btbl td:nth-child(1){grid-area:bk}
+  .btbl td:nth-child(2){grid-area:pt;margin-left:0}
+  .btbl td:nth-child(3){grid-area:a}
+  .btbl td:nth-child(4){grid-area:b}
+  .btbl td:nth-child(5){grid-area:n;align-self:end}
+  .btbl td:nth-child(6){grid-area:t;color:var(--mut)}
+  .btbl td:nth-child(6)::before{content:"마지막으로 읽은 시각 "}
+  .btbl td:nth-child(7){grid-area:st}
+  .btbl td:nth-child(3),.btbl td:nth-child(4){display:block}
+  .btbl .site{display:inline-block;width:64px;font-size:13px;color:var(--mut)}
+  /* 휴대폰 한 쪽 보기: 남는 높이를 채워 크게 (위의 .spread.spread 규칙이 한 쪽 보기까지 반으로 줄이던 것 바로잡음) */
+  .vstage{container-type:size}
+  .spread.single .vpage{width:min(calc(100vw - 64px),calc((94vh - 330px) * 140 / 198))}
+  .spread.single .vpage{width:min(calc(100cqw - 48px),calc((100cqh - 96px) * 140 / 198))}
+}
+
+/* 만들 책: 표지 그림이 들어간 고르기 칸 */
+.btc{height:auto;min-height:64px;padding:8px 18px 8px 10px;gap:12px;text-align:left}
+.btc::before{display:none}
+.btc-th{position:relative;width:32px;flex:none}
+.btc-th .paper{border-radius:1px 3px 3px 1px;box-shadow:0 0 0 .5px rgba(0,27,55,.1),0 4px 8px -4px rgba(0,27,55,.4)}
+.btc-th i{position:absolute;right:-7px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 2px var(--brand-tint)}
+.btc-t{display:grid;gap:0;min-width:0}
+.btc-t b{font-weight:inherit;line-height:1.3}
+.btc-t small{font-size:13px;font-weight:500;color:var(--mut);line-height:1.3}
+.btc[aria-checked="true"] .btc-t small{color:var(--brand-text);opacity:.8}
+.btc[aria-checked="true"] .btc-th i{animation:popin .3s cubic-bezier(.3,1.5,.5,1)}
+@media (max-width:640px){
+  .btc{height:auto;min-height:64px;padding:8px 12px 8px 10px}
+}
+/* 관리 화면 회색 바탕 위 보조 버튼은 흰 칸으로 (바탕과 섞여 안 보이던 것) */
+body[data-view="admin"] .ahead .btn-secondary{background:var(--card)}
+body[data-view="admin"] .ahead .btn-secondary:hover{background:var(--soft)}

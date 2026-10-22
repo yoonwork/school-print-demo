@@ -35,7 +35,8 @@
     openedAt = Date.now(); busy = false; capOk = false;
     if (!snap.pages.length) {
       root.innerHTML = '<div class="sapp">' + backHead() + '<div class="card empty big-empty"><div class="em-ic">' + ic('book') + '</div>' +
-        '<h4>보낼 구성표가 없어요</h4><p>샘플을 한 쪽 이상 담으면 여기서 보낼 수 있어요.</p><div class="row"><a class="btn btn-primary" href="#pick">샘플 고르러 가기</a></div></div></div>';
+        '<h4>보낼 구성표가 없어요</h4><p>샘플을 한 쪽 이상 담으면 여기서 보낼 수 있어요.</p><div class="row">' +
+        '<button type="button" class="btn btn-secondary" data-fill-example>예시 구성표로 채워 보기</button><a class="btn btn-primary" href="#pick">샘플 고르러 가기</a></div></div></div>';
       return;
     }
     var today = new Date(), min = today.getFullYear() + '-' + U.pad(today.getMonth() + 1) + '-' + U.pad(today.getDate());
@@ -191,6 +192,7 @@
       (navigator.clipboard ? navigator.clipboard.writeText(no) : Promise.reject()).then(function () { U.toast('번호를 복사했어요'); }, function () { U.toast('번호: ' + no); });
     }
     else if (t.dataset.new !== undefined) location.hash = '#pick';
+    else if (t.dataset.fillExample !== undefined) { window.Pick.loadExample(); show(); U.toast('예시 구성표 ' + window.Pick.snapshot().pages.length + '쪽을 불러왔어요'); }
   }
   function runCaptcha(btn) {
     if (capOk || btn.classList.contains('busy')) return;
@@ -243,7 +245,7 @@
     var spam = res.spam;
     root.innerHTML = '<div class="sapp">' + backHead() +
       '<div class="done">' +
-      '<div class="card dcard">' +
+      '<div class="card dcard reveal">' +
       '<div class="d-ic">' + ic('check') + '</div><p class="d-k">구성표를 받았어요</p>' +
       '<div class="d-no num" id="dNo">' + res.no + '</div>' +
       '<button type="button" class="btn btn-sm btn-secondary" data-copy="' + res.no + '">' + ic('copy', 'ic-s') + '번호 복사</button>' +
@@ -261,7 +263,7 @@
       '<div><dt>쪽 수</dt><dd class="num">' + snap.pages.length + '쪽</dd></div><div><dt>첨부</dt><dd class="num">' + nFiles + '개</dd></div></dl></div>' +
       '</div></div>';
     var link = root.querySelector('[data-focus]');
-    link.addEventListener('click', function () { window.Admin.focus(res.no); });
+    link.addEventListener('click', function () { window.Admin.focus(res.no, true); });
     if (spam) return;
     window.Server.sendMail(res.no, lab.mailFail).then(function (r) {
       var st = U.$('#mailStep'), nt = U.$('#mailNote');

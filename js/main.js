@@ -53,7 +53,7 @@
   // 데모 확인용 도우미 (콘솔에서 demo.reset() 하면 처음 상태로 돌아가요)
   window.demo = {
     reset: function () {
-      try { ['barunjjok_demo_db_v1', 'barunjjok_draft_v1', 'barunjjok_admin_demo'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) { /* 무시 */ }
+      try { ['barunjjok_demo_db_v1', 'barunjjok_demo_db_v2', 'barunjjok_draft_v1', 'barunjjok_admin_demo'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) { /* 무시 */ }
       location.reload();
     },
     exampleDraft: function () { window.Pick.loadExample(); },

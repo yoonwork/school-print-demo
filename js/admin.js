@@ -10,7 +10,7 @@
   'use strict';
   var U = window.UI, ic = U.ic, esc = U.esc, SV = window.Server;
   var AUTH_KEY = 'barunjjok_admin_demo';
-  var A = { tab: 'list', q: '', period: 'all', book: 'all', filter: 'all', sel: null, checked: [], focusNo: null, api: { no: '', key: '', log: [], last: null, ran: false } };
+  var A = { tab: 'list', q: '', period: 'all', book: 'all', filter: 'all', sel: null, checked: [], focusNo: null, flash: null, api: { no: '', key: '', log: [], last: null, ran: false } };
   var root;
 
   function authed() { try { return localStorage.getItem(AUTH_KEY) === '1'; } catch (e) { return false; } }
@@ -75,6 +75,8 @@
   function mailChip(m) {
     return { sent: '<span class="chip ok">보냄</span>', failed: '<span class="chip bad">메일 실패</span>', sending: '<span class="chip info">보내는 중</span>', skipped: '<span class="chip neu">안 보냄</span>' }[m] || '';
   }
+  // 이 브라우저에서 1시간 안에 보낸 구성표는 '방금 받음'으로 눈에 띄게 해요
+  function freshChip(r) { return r.fresh && (Date.now() - new Date(r.at).getTime()) < 3600000 ? ' <span class="chip info fresh">방금 받음</span>' : ''; }
   function spamChip(r) { return r.spam ? '<span class="chip warn" title="' + esc(r.spam) + '">스팸</span>' : '<span class="dash">–</span>'; }
 
   function renderList() {
@@ -88,9 +90,9 @@
     A.checked = A.checked.filter(function (no) { return rows.some(function (r) { return r.no === no; }); });
 
     var body = rows.length ? rows.map(function (r) {
-      return '<tr class="' + (r.no === A.sel ? 'on' : '') + (r.spam ? ' is-spam' : '') + '" data-row="' + r.no + '" tabindex="0">' +
+      return '<tr class="' + (r.no === A.sel ? 'on' : '') + (r.spam ? ' is-spam' : '') + (r.no === A.flash ? ' flash' : '') + '" data-row="' + r.no + '" tabindex="0">' +
         '<td class="cbx"><input type="checkbox" class="cb" data-check="' + r.no + '" aria-label="' + r.no + ' 고르기" ' + (A.checked.indexOf(r.no) >= 0 ? 'checked' : '') + '></td>' +
-        '<td class="id num">' + r.no + '</td><td class="dt num">' + U.dt(r.at) + '</td>' +
+        '<td class="id num">' + r.no + freshChip(r) + '</td><td class="dt num">' + U.dt(r.at) + '</td>' +
         '<td class="org">' + esc(r.org) + '</td><td class="bk">' + U.bookName(r.book) + '</td>' +
         '<td class="r num qty">' + U.num(r.qty) + '<small>부</small></td><td class="ml">' + mailChip(r.mail) + '</td><td class="sp">' + spamChip(r) + '</td></tr>';
     }).join('') : '<tr class="empty-row"><td colspan="8"><div class="empty"><div class="em-ic">' + ic('search') + '</div><h4>찾는 구성표가 없어요</h4><p>검색어나 기간을 바꿔 보세요.</p><div class="row"><button class="btn btn-secondary btn-sm" data-clear>검색 지우기</button></div></div></td></tr>';
@@ -109,6 +111,8 @@
       '<button class="fchip" data-filter="spam" aria-pressed="' + (A.filter === 'spam') + '">스팸 <span class="n num">' + nSpam + '</span></button></div>' +
       (A.filter === 'spam' && nSpam ? '<button class="btn btn-sm btn-danger" data-wipe>' + ic('trash', 'ic-s') + '스팸 ' + nSpam + '건 모두 지우기</button>' : '') +
       '</div>' +
+      (A.filter === 'all' && nFail ? '<div class="attn" role="status"><span class="attn-ic">' + ic('alert', 'ic-s') + '</span><p><b>메일이 안 간 구성표 <span class="num">' + nFail + '</span>건</b><span>구성표는 저장돼 있어요. 담당자가 직접 연락해 주세요.</span></p>' +
+        '<button type="button" class="btn btn-sm btn-white" data-filter="fail">모아 보기</button></div>' : '') +
       (A.checked.length ? '<div class="bulk"><span class="num">' + A.checked.length + '건 골랐어요</span><button class="btn btn-sm btn-danger" data-del-checked>' + ic('trash', 'ic-s') + '고른 것 지우기</button><button class="btn btn-sm btn-ghost" data-uncheck>고르기 취소</button></div>' : '') +
       '<div class="tscroll"><table class="tbl atbl"><thead><tr><th class="cbx"><span class="sr">고르기</span></th><th>번호</th><th>받은 날</th><th>기관</th><th>품목</th><th class="r">수량</th><th>메일</th><th>스팸</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
       '<div class="tfoot"><span class="num">' + (rows.length === all.length ? '전체 ' + all.length + '건' : rows.length + '건 찾음') + '</span><span>줄을 누르면 자세히 보여요</span></div>' +
@@ -117,6 +121,9 @@
       '</div>';
     U.$('#aPeriod').value = A.period;
     U.$('#aBook').value = A.book;
+    A.flash = null; // 강조는 한 번만
+    var fl = U.$('#amain tr.flash');
+    if (fl && wide()) fl.scrollIntoView({ block: 'nearest' });
   }
 
   function detailHTML(no) {
@@ -165,7 +172,7 @@
       b.parts.forEach(function (p, pi) {
         var n = window.DATA.SAMPLES.filter(function (x) { return x.book === b.key && x.part === p.key; }).length;
         var warn = (b.key === 'read' && p.key === 'inner');
-        rows += '<tr><td>' + b.name + '</td><td>' + p.name + '</td><td class="num"><code>' + p.board + '</code></td><td class="num"><code>' + p.board + '</code></td>' +
+        rows += '<tr><td>' + b.name + '</td><td>' + p.name + '</td><td class="num"><span class="site">사이트 A</span><code>' + p.board + '</code></td><td class="num"><span class="site">사이트 B</span><code>' + p.board + '</code></td>' +
           '<td class="r num">' + n + '<small>개</small></td><td class="dt num">' + U.dt(read) + '</td>' +
           '<td>' + (warn ? '<span class="chip warn" title="첫 첨부 그림이 없는 글은 목록에서 빼요">그림 없는 글 1</span>' : '<span class="chip ok">정상</span>') + '</td></tr>';
       });
@@ -263,7 +270,12 @@
   }
   function onClick(e) {
     var row = e.target.closest('tr[data-row]');
-    if (e.target.closest('.cbx')) { return; }
+    var cell = e.target.closest('.cbx');
+    if (cell) { // 체크 칸 전체(44px)를 눌러도 골라져요
+      var cb = cell.querySelector('input');
+      if (cb && e.target !== cb) cb.click();
+      return;
+    }
     var t = e.target.closest('button');
     if (!t && row) { A.sel = row.getAttribute('data-row'); renderList(); if (!wide()) window.scrollTo(0, 0); return; }
     if (!t) return;
@@ -321,5 +333,5 @@
     if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); A.sel = row.getAttribute('data-row'); renderList(); }
   });
 
-  window.Admin = { init: mount, show: show, focus: function (no) { A.focusNo = no; A.filter = 'all'; A.q = ''; A.period = 'all'; A.book = 'all'; }, login: function () { setAuth(true); } };
+  window.Admin = { init: mount, show: show, focus: function (no, flash) { A.focusNo = no; A.flash = flash ? no : null; A.filter = 'all'; A.q = ''; A.period = 'all'; A.book = 'all'; }, login: function () { setAuth(true); } };
 })();

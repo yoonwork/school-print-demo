@@ -64,6 +64,11 @@
   function repCount() { return S.pages.filter(function (p) { return p.rep; }).length; }
   function missingCount() { return S.pages.filter(function (p) { return p.rep && p.rep.missing; }).length; }
   function paper(sid) { return '<div class="paper">' + window.Art.svg(U.sample(sid)) + '</div>'; }
+  // 담은 쪽을 겹쳐 쌓은 작은 책 묶음 (마지막에 담은 쪽이 맨 위)
+  function stack(cls, max) {
+    var last = S.pages.slice(-max);
+    return '<div class="' + cls + '" aria-hidden="true">' + (last.length ? last.map(function (p) { return paper(p.sid); }).join('') : '<div class="paper ghost-paper"></div>') + '</div>';
+  }
 
   // ---------------- 그리기 ----------------
   function mount() {
@@ -73,14 +78,18 @@
       '<header class="apphead"><a class="logo" href="#pick" aria-label="바른쪽 처음으로"><span class="mark" aria-hidden="true"></span>바른쪽</a>' +
       '<span class="apphead-sub">학교 인쇄물 구성표</span>' +
       '<button class="ib ml-auto" data-help aria-label="만드는 방법 보기">' + ic('help') + '</button></header>' +
-      '<section class="hello"><div id="stepbar"></div><p>선생님, 반가워요</p><h1>표지부터 한 쪽씩 골라 담아 주세요</h1>' +
-      '<div class="booktype" role="radiogroup" aria-label="만들 책" id="booktype"></div></section>' +
       '<div class="pick">' +
       '<div class="pick-main">' +
+      '<section class="hello"><div id="stepbar"></div><p>선생님, 반가워요</p><h1>표지부터 한 쪽씩 골라 담아 주세요</h1>' +
+      '<div class="booktype" role="radiogroup" aria-label="만들 책" id="booktype"></div></section>' +
       '<div id="resume"></div>' +
+      // 부품 탭과 분류 칩은 아래로 내려도 위에 붙어 따라와요
+      '<div class="pfilt-sen" id="pfiltSen" aria-hidden="true"></div>' +
+      '<div class="pfilt" id="pfilt">' +
       '<div class="partbar"><div class="seg seg-lg" role="tablist" aria-label="부품" id="parts"></div></div>' +
       '<div class="frow"><div class="chips-x" id="cats" role="group" aria-label="분류"></div>' +
       '<label class="sortsel"><span class="sr">정렬</span><select id="sort"><option value="pop">인기순</option><option value="new">최신순</option></select></label></div>' +
+      '</div>' +
       '<div class="sgrid" id="grid" aria-live="polite"></div>' +
       '</div>' +
       '<div class="scrim" id="scrim" hidden></div>' +
@@ -90,6 +99,17 @@
     root.addEventListener('click', onClick);
     root.addEventListener('change', onChange);
     root.addEventListener('pointerdown', onGrip);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (en) {
+        U.$('#pfilt').classList.toggle('stuck', !en[0].isIntersecting && en[0].boundingClientRect.top < 0);
+      }).observe(U.$('#pfiltSen'));
+    }
+  }
+  // 위에 붙은 탭으로 분류를 바꾸면, 새 목록의 처음부터 보이게 올려 줘요
+  function toGridTop() {
+    var f = U.$('#pfilt');
+    if (!f.classList.contains('stuck')) return;
+    window.scrollTo(0, U.$('#pfiltSen').getBoundingClientRect().top + window.pageYOffset);
   }
 
   function render() {
@@ -97,8 +117,13 @@
     U.$('#sort').value = S.sort;
   }
   function renderBookType() {
+    // 만들 책: 실제 표지 그림과 샘플 수를 같이 보여 줘요
+    var coverOf = { read: 'R-C01', plan: 'P-C01' };
     U.$('#booktype').innerHTML = '<span class="bt-l">만들 책</span>' + D.BOOKS.map(function (b) {
-      return '<button type="button" class="btc" role="radio" aria-checked="' + (b.key === S.book) + '" data-book="' + b.key + '">' + b.name + '</button>';
+      var n = D.SAMPLES.filter(function (x) { return x.book === b.key; }).length;
+      return '<button type="button" class="btc" role="radio" aria-checked="' + (b.key === S.book) + '" data-book="' + b.key + '">' +
+        '<span class="btc-th" aria-hidden="true">' + paper(coverOf[b.key]) + (b.key === S.book ? '<i>' + ic('check', 'ic-xs') + '</i>' : '') + '</span>' +
+        '<span class="btc-t"><b>' + b.name + '</b><small class="num">샘플 ' + n + '개</small></span></button>';
     }).join('');
   }
   function renderResume() {
@@ -170,30 +195,44 @@
       '<div class="sheet-grab" aria-hidden="true"></div>' +
       '<div class="book-sum">' +
       '<div class="bs-top"><span>내 구성표 · ' + book().name + '</span><button type="button" class="ib ib-s sheet-x" data-sheet-x aria-label="구성표 닫기">' + ic('x', 'ic-s') + '</button></div>' +
-      '<div class="bs-n"><b class="num">' + S.pages.length + '</b><small>쪽</small></div>' +
+      '<div class="bs-row"><div class="bs-n"><b class="num">' + S.pages.length + '</b><small>쪽</small></div>' + stack('bs-stack', 4) + '</div>' +
       '<div class="bs-meta"><span>교체 원고 ' + repCount() + '</span><span>표시 ' + markCount() + '</span><span>' + (S.savedAt ? '자동 저장 ' + U.hm(S.savedAt) : '고르면 자동 저장돼요') + '</span></div>' +
       '</div>' +
       '<div class="book-list">' + (S.pages.length ?
         '<p class="bl-help">' + ic('grip', 'ic-s') + '손잡이를 끌거나 화살표로 순서를 바꿔요</p><ol class="plist" id="plist">' + rows + '</ol>' :
-        '<div class="empty"><div class="em-ic">' + ic('book') + '</div><h4>아직 담은 쪽이 없어요</h4><p>샘플의 \'담기\'를 누르면 여기에 순서대로 쌓여요.</p></div>') +
+        '<div class="empty"><div class="em-ic">' + ic('book') + '</div><h4>아직 담은 쪽이 없어요</h4><p>샘플의 \'담기\'를 누르면 여기에 순서대로 쌓여요.</p>' +
+        '<div class="row"><button type="button" class="btn btn-secondary btn-sm" data-example>예시 구성표로 채워 보기</button></div></div>') +
       '</div>' +
       '<div class="book-act"><button type="button" class="btn btn-secondary btn-lg" data-preview ' + (S.pages.length ? '' : 'disabled') + '>' + ic('book') + '미리보기</button>' +
       '<button type="button" class="btn btn-primary btn-lg" data-go-send ' + (S.pages.length ? '' : 'disabled') + '>' + ic('send') + '보내기</button></div>';
   }
   function renderMbar() {
     U.$('#stepbar').innerHTML = U.stepbar(S.pages.length ? 2 : 1);
-    var el = U.$('#mbar'), last = S.pages.slice(-3);
-    el.innerHTML = '<div class="mb-stack" aria-hidden="true">' + (last.length ? last.map(function (p) { return paper(p.sid); }).join('') : '<div class="paper empty-paper"></div>') + '</div>' +
-      '<div class="mb-t"><b class="num">' + S.pages.length + '쪽 담음</b><span>' + (S.savedAt ? '자동 저장 ' + U.hm(S.savedAt) : '고르면 자동 저장돼요') + '</span></div>' +
+    var el = U.$('#mbar'), n = S.pages.length;
+    el.classList.toggle('is-empty', !n);
+    el.innerHTML = (n ?
+      stack('mb-stack', 3) + '<div class="mb-t"><b class="num">' + n + '쪽 담음</b><span>' + (S.savedAt ? '자동 저장 ' + U.hm(S.savedAt) : '고르면 자동 저장돼요') + '</span></div>' :
+      '<div class="mb-t"><b>아직 담은 쪽이 없어요</b><button type="button" class="link-btn" data-example>예시로 채워 보기</button></div>') +
       '<button type="button" class="btn btn-primary btn-lg" data-sheet>구성표 보기</button>';
   }
   function changed(msg) { saveDraft(); renderGrid(); renderBook(); renderMbar(); if (msg) U.toast(msg); }
 
   // ---------------- 동작 ----------------
-  function add(sid) {
+  // src: 날아갈 그림(샘플 카드의 종이). flyer: 이미 띄워 둔 그림(크게 보기에서 담을 때).
+  // 움직임 줄이기 설정이면 움직임 없이 숫자만 바꿔요.
+  function add(sid, src, flyer) {
+    flyer = flyer || U.flyFrom(src);
     S.pages.push({ uid: uid(), sid: sid, rep: null });
     var smp = U.sample(sid);
-    changed(S.pages.length + '쪽에 \'' + smp.title + '\'을 담았어요');
+    changed(S.pages.length + '쪽에 ' + U.josa('\'' + smp.title + '\'', '을', '를') + ' 담았어요');
+    var card = U.$('#grid [data-add="' + sid + '"]');
+    if (card) { var got = card.closest('.scard').querySelector('.got'); if (got) got.classList.add('pop'); }
+    var wide = window.matchMedia('(min-width:1024px)').matches;
+    var stk = U.$(wide ? '#book .bs-stack' : '#mbar .mb-stack'), cnt = U.$(wide ? '#book .bs-n b' : '#mbar .mb-t b');
+    var top = stk && stk.lastElementChild;
+    if (!flyer || !top) { U.bump(cnt); return; }
+    top.classList.add('pending');
+    U.flyTo(flyer, top, function () { top.classList.remove('pending'); top.classList.add('land'); U.bump(cnt); });
   }
   function move(from, to) {
     if (to < 0 || to >= S.pages.length) return;
@@ -213,7 +252,12 @@
       '<div class="z-a"><button class="btn btn-secondary btn-lg" data-x>닫기</button><button class="btn btn-primary btn-lg" data-ok data-autofocus>' + ic('plus') + '이 쪽 담기</button></div></div></div>',
       { cls: 'zoom', label: x.title + ' 크게 보기' });
     m.querySelector('[data-x]').onclick = U.closeModal;
-    m.querySelector('[data-ok]').onclick = function () { U.closeModal(); add(sid); };
+    m.querySelector('[data-ok]').onclick = function () {
+      // 대화상자가 닫혀도 종이 그림은 화면 위에 남아 구성표로 날아가요
+      var flyer = U.flyFrom(m.querySelector('.zpaper .paper'));
+      U.closeModal();
+      add(sid, null, flyer);
+    };
   }
   function openSheet(on) {
     var b = U.$('#book'), sc = U.$('#scrim');
@@ -243,11 +287,16 @@
     var t = e.target.closest('button, [data-sheet-x]');
     if (!t) { if (e.target.id === 'scrim') openSheet(false); return; }
     var d = t.dataset;
-    if (d.add) add(d.add);
+    if (d.add) add(d.add, t.closest('.scard').querySelector('.sthumb .paper'));
+    else if (d.example !== undefined) {
+      // 예시는 '어제 쓰다 둔 구성표'를 다시 연 모습이라 이어서 쓰기 안내도 함께 보여요
+      loadExample(); openSheet(false); window.scrollTo(0, 0);
+      U.toast('예시 구성표 ' + S.pages.length + '쪽을 불러왔어요');
+    }
     else if (d.zoom) zoom(d.zoom);
     else if (d.book) { if (S.book !== d.book) { S.book = d.book; S.part = 'cover'; S.cat = '전체'; saveDraft(); render(); } }
-    else if (d.part) { S.part = d.part; S.cat = '전체'; renderParts(); renderCats(); renderGrid(); }
-    else if (d.cat) { S.cat = d.cat; renderCats(); renderGrid(); }
+    else if (d.part) { S.part = d.part; S.cat = '전체'; renderParts(); renderCats(); renderGrid(); toGridTop(); }
+    else if (d.cat) { S.cat = d.cat; renderCats(); renderGrid(); toGridTop(); }
     else if (d.del) {
       var i = S.pages.findIndex(function (p) { return p.uid === d.del; });
       var removed = S.pages.splice(i, 1)[0];
@@ -275,7 +324,7 @@
   }
   function onChange(e) {
     var t = e.target;
-    if (t.id === 'sort') { S.sort = t.value; renderGrid(); return; }
+    if (t.id === 'sort') { S.sort = t.value; renderGrid(); toGridTop(); return; }
     if (t.dataset.rep && t.files && t.files[0]) {
       var f = t.files[0], ext = (f.name.split('.').pop() || '').toLowerCase();
       if (['hwp', 'hwpx', 'pdf', 'jpg', 'jpeg', 'png'].indexOf(ext) < 0) { U.toast('한글·PDF·그림 파일만 붙일 수 있어요', 'bad'); t.value = ''; return; }
